@@ -1,0 +1,87 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, TensorDataset
+import numpy as np
+from loss import MultiTaskLoss
+from metrics import MultiTaskMetrics
+
+def train_model(model, train_loader, val_loader, epochs=50, lr=0.001, val_step=5):
+    custom_criterion = MultiTaskLoss(weight_task1=1.0, weight_task2=1.5)
+    optimizer = optim.Adam(model.parameters(), lr=lr)
+    
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    model.to(device)
+    
+    print(f"Training started on device: {device}")
+    
+    for epoch in range(epochs):
+        model.train()
+        train_loss = 0.0
+        
+        for features, labels_task1, labels_task2 in train_loader:
+            features = features.to(device)
+            labels_task1 = labels_task1.to(device)
+            labels_task2 = labels_task2.to(device)
+            
+            optimizer.zero_grad()
+            pred1, pred2 = model(features)
+            
+            # total_loss diambil dari elemen pertama return custom_loss kamu
+            total_loss, l1, l2 = custom_criterion(pred1, labels_task1, pred2, labels_task2)
+            
+            total_loss.backward()
+            optimizer.step()
+            
+            train_loss += total_loss.item()
+
+        # Print progress setiap epoch (opsional)
+        if (epoch + 1) % 1 == 0:
+            print(f"Epoch [{epoch+1}/{epochs}] - Loss: {train_loss/len(train_loader):.4f}")
+
+        # Jalankan validasi setiap val_step
+        if (epoch + 1) % val_step == 0:
+            validation(model, val_loader, device, epoch, epochs)
+
+def validation(model, val_loader, device, epoch, epochs):
+    model.eval()
+    mtl_metrics = MultiTaskMetrics()
+
+    with torch.no_grad():
+        for features, labels1, labels2 in val_loader:
+            features, labels1, labels2 = features.to(device), labels1.to(device), labels2.to(device)
+            p1, p2 = model(features)
+            
+            # _, pred1 = torch.max(p1, 1)
+            # val_acc1 += (pred1 == labels1).sum().item()
+            
+            # _, pred2 = torch.max(p2, 1)
+            # val_acc2 += (pred2 == labels2).sum().item()
+            
+            # total += labels1.size(0)
+            # Update data ke dalam metrics
+            mtl_metrics.update(p1, labels1, p2, labels2)
+    
+    # Hitung dan tampilkan hasil
+    res = mtl_metrics.compute()
+    print(f"Digit Acc: {res['task_digit']['acc']:.4f} | F1: {res['task_digit']['f1']:.4f}")
+    print(f"Speaker Acc: {res['task_speaker']['acc']:.4f} | F1: {res['task_speaker']['f1']:.4f}")
+
+def prepare_dataloader(X, y1, y2, batch_size=32):
+    X_tensor = torch.FloatTensor(X)
+    y1_tensor = torch.LongTensor(y1)
+    y2_tensor = torch.LongTensor(y2)
+    dataset = TensorDataset(X_tensor, y1_tensor, y2_tensor)
+    return DataLoader(dataset, batch_size=batch_size, shuffle=True)
+
+# --- CONTOH PENYIAPAN DATA ---
+# Anggap X_train adalah hasil feature_extraction yang sudah di-stack jadi numpy array
+# X_train shape: (n_samples, 45)
+# y_digit shape: (n_samples,) -> label 0-9
+# y_speaker shape: (n_samples,) -> label 0-n_speaker
+
+# Cara pakai:
+# model = ShallowMTLModel(input_size=45, num_classes_task1=10, num_classes_task2=6)
+# train_loader = prepare_dataloader(X_train_np, y_digit_np, y_speaker_np)
+# val_loader = prepare_dataloader(X_val_np, y_digit_val, y_speaker_val)
+# train_model(model, train_loader, val_loader)
