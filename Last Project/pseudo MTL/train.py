@@ -1,15 +1,22 @@
 # import argparse
 # import yaml
 from src.utils.logger import setup_logger
-from src.data.dataloader import load_data
+from src.data.dataloader import dataUtils
 from src.utils.config import Config
+from sklearn.preprocessing import LabelEncoder
 # from src.features.pipeline import FeaturePipeline
 # from src.models.mlp import MultiTaskMLP
 # from src.models.trainer import Trainer
 
 def main():
-    data = load_data(Config.AUDIO_PATH)
-    print(data)
+    DataUtils = dataUtils()
+    data = DataUtils.load_data(Config.AUDIO_PATH)
+    train_data, test_data = DataUtils.data_split(data)
+    
+    le = LabelEncoder()
+    train_data['speaker_id'] = le.fit_transform(train_data['speaker'])
+    test_data['speaker_id'] = le.transform(test_data['speaker'])
+    
 
     # # 2. Feature Pipeline
     # # Menginisialisasi ekstraksi MFCC, Spectral, dll

@@ -3,11 +3,11 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
-from loss import MultiTaskLoss
-from metrics import MultiTaskMetrics
+from src.trainer.loss import MultiTaskLoss
+from src.trainer.metrics import MultiTaskMetrics
 
-def train_model(model, train_loader, val_loader, epochs=50, lr=0.001, val_step=5):
-    custom_criterion = MultiTaskLoss(weight_task1=1.0, weight_task2=1.5)
+def train_model(model, train_loader=None, val_loader=None, epochs=50, lr=0.001, val_step=5):
+    custom_criterion = MultiTaskLoss(weight_task1=1.0, weight_task2=0.4)
     optimizer = optim.Adam(model.parameters(), lr=lr)
     
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -16,32 +16,55 @@ def train_model(model, train_loader, val_loader, epochs=50, lr=0.001, val_step=5
     print(f"Training started on device: {device}")
     
     for epoch in range(epochs):
+
         model.train()
+
         train_loss = 0.0
-        
+        train_l1 = 0.0
+        train_l2 = 0.0
+
         for features, labels_task1, labels_task2 in train_loader:
+
             features = features.to(device)
             labels_task1 = labels_task1.to(device)
             labels_task2 = labels_task2.to(device)
-            
-            optimizer.zero_grad()
-            pred1, pred2 = model(features)
-            
-            # total_loss diambil dari elemen pertama return custom_loss kamu
-            total_loss, l1, l2 = custom_criterion(pred1, labels_task1, pred2, labels_task2)
-            
-            total_loss.backward()
-            optimizer.step()
-            
-            train_loss += total_loss.item()
 
-        # Print progress setiap epoch (opsional)
-        if (epoch + 1) % 1 == 0:
-            print(f"Epoch [{epoch+1}/{epochs}] - Loss: {train_loss/len(train_loader):.4f}")
+            optimizer.zero_grad()
+
+            pred1, pred2 = model(features)
+
+            total_loss, l1, l2 = custom_criterion(
+                pred1,
+                labels_task1,
+                pred2,
+                labels_task2
+            )
+
+            total_loss.backward()
+
+            optimizer.step()
+
+            train_loss += total_loss.item()
+            train_l1 += l1.item()
+            train_l2 += l2.item()
+
+        avg_total = train_loss / len(train_loader)
+        avg_l1 = train_l1 / len(train_loader)
+        avg_l2 = train_l2 / len(train_loader)
+
+        print(
+            f"Epoch [{epoch+1}/{epochs}] "
+            f"- total_loss={avg_total:.4f} "
+            f"- l1={avg_l1:.4f} "
+            f"- l2={avg_l2:.4f}"
+        )
 
         # Jalankan validasi setiap val_step
         if (epoch + 1) % val_step == 0:
-            validation(model, val_loader, device, epoch, epochs)
+            if val_loader is not None:
+                validation(model, val_loader, device, epoch, epochs)
+            else:
+                print(f"skip validation")
 
 def validation(model, val_loader, device, epoch, epochs):
     model.eval()

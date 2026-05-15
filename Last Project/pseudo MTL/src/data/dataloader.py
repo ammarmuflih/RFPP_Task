@@ -1,83 +1,100 @@
 import os
 import librosa
 import pandas as pd
+from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import StandardScaler
+from sklearn.model_selection import train_test_split
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+import torch
+import numpy as np
 
-def load_data(audio_dir):
-    data = []
+class dataUtils:
+    def __init__(self):
+        pass
 
-    for items in os.listdir(audio_dir):
-        # skip kalau bukan file .wav
-        if not items.endswith(".wav"):
-            continue
+    def load_data(self, audio_dir):
+        data = []
+        for items in os.listdir(audio_dir):
+            if not items.endswith(".wav"): continue
+            
+            audio_path = os.path.join(audio_dir, items)
+            name = items.replace(".wav", "")
+            
+            try:
+                digit, speaker_name, sample_number = name.split("_")
+            except ValueError: continue
 
-        audio_path = os.path.join(audio_dir, items)
+            data.append({
+                "path": audio_path, # Simpan path saja
+                "speaker": speaker_name,
+                "digit": int(digit),
+                "sample_number": int(sample_number)
+            })
+        return pd.DataFrame(data)
+    
+    def data_preprocess(self, train_df, test_df):
+        scaler = StandardScaler()
+        le = LabelEncoder()
 
-        # load audio
-        y, sr = librosa.load(audio_path)
-        y, _ = librosa.effects.trim(y)
+        y_speaker_train = le.fit_transform(train_df[52])
+        y_speaker_test = le.transform(test_df[52])
 
-        # parsing nama file FSDD: digit_speaker_index.wav
-        name = items.replace(".wav", "")
-        try:
-            digit, speaker_name, sample_number = name.split("_")
-        except ValueError:
-            # skip kalau format tidak sesuai
-            continue
+        y_digit_train = train_df[53].values
+        y_digit_test = test_df[53].values
 
-        # convert ke tipe yang benar
-        digit = int(digit)
-        sample_number = int(sample_number)
+        X_train_raw = train_df.drop(columns=[52, 53]).values
+        X_test_raw = test_df.drop(columns=[52, 53]).values
 
-        data.append({
-            "filename": items,
-            "speaker": speaker_name,
-            "digit": digit,
-            "sample_number": sample_number,
-            "y": y,
-            "sr": sr,
-        })
+        X_train_scaled = scaler.fit_transform(X_train_raw)
+        X_test_scaled = scaler.transform(X_test_raw)
 
-    return data
+        return X_train_scaled, X_test_scaled, y_digit_train, y_digit_test, y_speaker_train, y_speaker_test
 
-# def load_data(audio_dir):
-#     data = []
-#     for items in os.listdir(audio_dir):
-#         audio_path = os.path.join(audio_dir, items)
-#         y, sr = librosa.load(audio_path)
-#         y, _ = librosa.effects.trim(y)
-#         digit = items[0]
-
-#         start_name = 0
-#         stop_name = 0
-#         sep_num = 0
-#         dot_position = 0
-
-#         for n, character in enumerate(items):
-#             if character == "_" and sep_num == 0:
-#                 start_name = n+1
-#                 sep_num += 1
-
-#             elif character == "_" and sep_num == 1:
-#                 stop_name = n
-#                 sep_num += 1
-
-#             elif character == "." and sep_num == 2:
-#                 dot_position = n
+    def data_split(self, df):
+        # Official Split: sample 0-4 (test), 5-49 (train)
+        test_data = df[df['sample_number'].isin(range(0, 5))].reset_index(drop=True)
+        train_data = df[df['sample_number'].isin(range(5, 50))].reset_index(drop=True)
         
-#         speaker_name = items[start_name:stop_name]
-#         sample_number = items[stop_name+1:dot_position]
-#         data.append({
-#             "filename": items,
-#             "speaker": speaker_name,
-#             "digit": digit,
-#             "sample_number": sample_number,
-#             "y": y,
-#             "sr": sr,
-#         })
-        
-#     return data
+        return train_data, test_data
 
+class FSDDDataset(Dataset):
+    def __init__(self, df, audio_transform=None, mfcc_transform=None):
+        self.df = df
+        self.audio_transform = audio_transform
+        self.mfcc_transform = mfcc_transform
+
+    def __getitem__(self, idx):
+        row = self.df.iloc[idx]
+        
+        # 1. Load audio mentah (Pra-MFCC)
+        y, sr = librosa.load(row['path'])
+        
+        # 2. Eksekusi Audio Augmentation (Sinyal Suara)
+        if self.audio_transform:
+            for aug_func in self.audio_transform:
+                # Karena fungsi kamu di class Augmentation butuh parameter spesifik,
+                # di sini kita panggil secara berurutan.
+                y = aug_func(y, sr) if 'sr' in aug_func.__code__.co_varnames else aug_func(y)
+
+        # 3. Ekstraksi MFCC
+        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40, n_fft=1400)
+
+        # 4. Eksekusi MFCC Augmentation (SpecAugment)
+        if self.mfcc_transform:
+            for aug_func in self.mfcc_transform:
+                mfcc = aug_func(mfcc)
+
+        # 5. Pooling untuk MLP (Statistik rata-rata)
+        mfcc_final = np.mean(mfcc.T, axis=0) 
+
+        return (torch.FloatTensor(mfcc_final), 
+                torch.tensor(row['digit']), 
+                torch.tensor(row['speaker_id']))
+
+    def __len__(self):
+        return len(self.df)
 
 if __name__=='__main__':
     audio_dir = 'C:\\Users\\Ammar\\OneDrive\\Dokumen\\NextCloud\\My Documents\\Kuylah S2\\SEM 2\\RFPP\\RFPP_Task\\Last Project\\pseudo MTL\\data\\recordings\\'
-    load_data(audio_dir)
+    dataUtils.load_data(audio_dir)
