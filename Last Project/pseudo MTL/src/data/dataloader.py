@@ -33,62 +33,68 @@ class dataUtils:
             })
         return pd.DataFrame(data)
     
-    def data_preprocess(self, train_df, test_df):
+    def scale_features(train_df, val_df=None, test_df=None, feature_col='mfcc_feature'):
         scaler = StandardScaler()
-        le = LabelEncoder()
 
-        y_speaker_train = le.fit_transform(train_df[52])
-        y_speaker_test = le.transform(test_df[52])
+        # Fit + transform hanya dari train
+        X_train = np.vstack(train_df[feature_col].values)
+        X_train_scaled = scaler.fit_transform(X_train)
 
-        y_digit_train = train_df[53].values
-        y_digit_test = test_df[53].values
+        result = {'train': X_train_scaled, 'scaler': scaler}
 
-        X_train_raw = train_df.drop(columns=[52, 53]).values
-        X_test_raw = test_df.drop(columns=[52, 53]).values
+        # Transform val & test pakai scaler dari train
+        if val_df is not None:
+            X_val = np.vstack(val_df[feature_col].values)
+            result['val'] = scaler.transform(X_val)
 
-        X_train_scaled = scaler.fit_transform(X_train_raw)
-        X_test_scaled = scaler.transform(X_test_raw)
+        if test_df is not None:
+            X_test = np.vstack(test_df[feature_col].values)
+            result['test'] = scaler.transform(X_test)
 
-        return X_train_scaled, X_test_scaled, y_digit_train, y_digit_test, y_speaker_train, y_speaker_test
+        return result
 
     def data_split(self, df):
         # Official Split: sample 0-4 (test), 5-49 (train)
         test_data = df[df['sample_number'].isin(range(0, 5))].reset_index(drop=True)
-        train_data = df[df['sample_number'].isin(range(5, 50))].reset_index(drop=True)
+        train_data = df[df['sample_number'].isin(range(15, 50))].reset_index(drop=True)
+        val_data = df[df['sample_number'].isin(range(5, 15))].reset_index(drop=True)
         
-        return train_data, test_data
+        return train_data, test_data, val_data
+    
+    def load_data_waveform(self, audio_dir):
+        waveform_data = []
+        for item in os.listdir(audio_dir):
+            audio_path = os.path.join(audio_dir, item)
+            y, sr = librosa.load(audio_path)
+            y, _ = librosa.effects.trim(y)
+            name = item.replace(".wav", "")
+            try:
+                digit, speaker_name, sample_number = name.split("_")
+            except ValueError: continue
+
+            waveform_data.append({
+                "data_path": audio_path,
+                "y": y,
+                "sr": sr,
+                "augmented": 0,
+                "speaker": speaker_name,
+                "digit": digit,
+                "sample_number": sample_number,
+            })
+        
+        return waveform_data
 
 class FSDDDataset(Dataset):
-    def __init__(self, df, audio_transform=None, mfcc_transform=None):
+    def __init__(self, df, scaled_data, mfcc_transform=None):
         self.df = df
-        self.audio_transform = audio_transform
+        self.scaled_data = scaled_data 
         self.mfcc_transform = mfcc_transform
 
     def __getitem__(self, idx):
         row = self.df.iloc[idx]
-        
-        # 1. Load audio mentah (Pra-MFCC)
-        y, sr = librosa.load(row['path'])
-        
-        # 2. Eksekusi Audio Augmentation (Sinyal Suara)
-        if self.audio_transform:
-            for aug_func in self.audio_transform:
-                # Karena fungsi kamu di class Augmentation butuh parameter spesifik,
-                # di sini kita panggil secara berurutan.
-                y = aug_func(y, sr) if 'sr' in aug_func.__code__.co_varnames else aug_func(y)
+        mfcc = self.scaled_data[idx]
 
-        # 3. Ekstraksi MFCC
-        mfcc = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=40, n_fft=1400)
-
-        # 4. Eksekusi MFCC Augmentation (SpecAugment)
-        if self.mfcc_transform:
-            for aug_func in self.mfcc_transform:
-                mfcc = aug_func(mfcc)
-
-        # 5. Pooling untuk MLP (Statistik rata-rata)
-        mfcc_final = np.mean(mfcc.T, axis=0) 
-
-        return (torch.FloatTensor(mfcc_final), 
+        return (torch.FloatTensor(mfcc), 
                 torch.tensor(row['digit']), 
                 torch.tensor(row['speaker_id']))
 

@@ -12,7 +12,7 @@ class MultiTaskLoss(nn.Module):
 
     def forward(self, pred1, target1, pred2, target2):
         loss1 = self.criterion1(pred1, target1)
-        loss2 = self.criterion2(pred2 ,target2) # Asumsi target2 adalah label speaker
+        loss2 = self.criterion2(pred2 ,target2)
         
         # Menggabungkan dengan bobot kustom
         total_loss = (self.w1 * loss1) + (self.w2 * loss2)

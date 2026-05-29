@@ -3,37 +3,51 @@ import librosa
 import random
 import pandas as pd
 
-# def feature_extraction(extracted_wav):
-#     features = []
-#     for item in extracted_wav:
-#         sr = item["sr"] 
-#         y = item["y"]
+def feature_extraction(extracted_wav):
+    mfcc_features = []
+    for item in extracted_wav:
+        sr = item["sr"] 
+        y = item["y"]
 
-#         mfcc_feat = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20, n_mels=40)
-#         # delta = librosa.feature.delta(mfcc_feat, width=3)
-#         # delta2 = librosa.feature.delta(mfcc_feat, order=2, width=3)
-#         spctrl_ctrd = librosa.feature.spectral_centroid(y=y, sr=sr)
-#         spctrl_bdwth = librosa.feature.spectral_bandwidth(y=y, sr=sr)
-#         spctrl_rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
-#         rms = librosa.feature.rms(y=y)
-#         zcr = librosa.feature.zero_crossing_rate(y=y)
+        mfcc_feat = librosa.feature.mfcc(y=y, sr=sr, n_mfcc=20, n_mels=40)
+        # delta = librosa.feature.delta(mfcc_feat, width=3)
+        # delta2 = librosa.feature.delta(mfcc_feat, order=2, width=3)
+        spctrl_ctrd = librosa.feature.spectral_centroid(y=y, sr=sr)
+        spctrl_bdwth = librosa.feature.spectral_bandwidth(y=y, sr=sr)
+        spctrl_rolloff = librosa.feature.spectral_rolloff(y=y, sr=sr)
+        rms = librosa.feature.rms(y=y)
+        zcr = librosa.feature.zero_crossing_rate(y=y)
 
-#         features.append(np.hstack([
-#             np.mean(y), np.std(y), np.max(y), np.min(y),
-#             np.mean(zcr), np.mean(rms),
-#             np.mean(spctrl_ctrd), np.std(spctrl_ctrd),
-#             np.mean(spctrl_bdwth), np.std(spctrl_bdwth),
-#             np.mean(spctrl_rolloff), np.std(spctrl_rolloff),
-#             np.mean(mfcc_feat, axis=1),       
-#             np.std(mfcc_feat, axis=1),        
-#             # np.mean(delta, axis=1),           
-#             # np.std(delta, axis=1),            
-#             # np.mean(delta2, axis=1),          
-#             # np.std(delta2, axis=1),           
-#             item["speaker"], item["digit"], item["sample_number"],
-#         ]))
-    
-#     return pd.DataFrame(features)
+        # mfcc_features.append(np.hstack([
+        #     np.mean(y), np.std(y), np.max(y), np.min(y),
+        #     np.mean(zcr), np.mean(rms),
+        #     np.mean(spctrl_ctrd), np.std(spctrl_ctrd),
+        #     np.mean(spctrl_bdwth), np.std(spctrl_bdwth),
+        #     np.mean(spctrl_rolloff), np.std(spctrl_rolloff),
+        #     np.mean(mfcc_feat, axis=1),       
+        #     np.std(mfcc_feat, axis=1),        
+        #     # np.mean(delta, axis=1),           
+        #     # np.std(delta, axis=1),            
+        #     # np.mean(delta2, axis=1),          
+        #     # np.std(delta2, axis=1),           
+        #     item["speaker"], item["digit"], item["sample_number"],
+        # ]))
+        del item["y"], item["sr"], item['data_path']
+        item["mfcc_feature"] = np.hstack([
+            np.mean(y), np.std(y), np.max(y), np.min(y),
+            np.mean(zcr), np.mean(rms),
+            np.mean(spctrl_ctrd), np.std(spctrl_ctrd),
+            np.mean(spctrl_bdwth), np.std(spctrl_bdwth),
+            np.mean(spctrl_rolloff), np.std(spctrl_rolloff),
+            np.mean(mfcc_feat, axis=1),       
+            np.std(mfcc_feat, axis=1),        
+            # np.mean(delta, axis=1),           
+            # np.std(delta, axis=1),            
+            # np.mean(delta2, axis=1),          
+            # np.std(delta2, axis=1),           
+        ])
+        
+    return extracted_wav
 
 class Augmentation:
     def __init__(self):
@@ -143,6 +157,30 @@ class Augmentation:
         mfcc_aug[f0:f0+f, :] = 0
 
         return mfcc_aug
+    
+    def random_waveform_augmentation(self, augmentation_method, waveform_data):
+        augmented_waveform_data = []
+        for item in waveform_data:
+            if random.randint(0, 1) == 1:
+                aug_method = augmentation_method[random.randint(0, len(augmentation_method)-1)]
+                y = aug_method(item["y"], item["sr"]) if 'sr' in aug_method.__code__.co_varnames else aug_method(item["sr"])
+                augmented_waveform_data.append({
+                    "data_path": item["data_path"],
+                    "y": y,
+                    "sr": item["sr"],
+                    "augmented": 1,
+                    "speaker": item["speaker"],
+                    "digit": item["digit"],
+                    "sample_number": item["sample_number"],
+                })
+            else:
+                # print("Tidak Diaugmentasi")
+                pass
+        
+        print(f"{len(augmented_waveform_data)} data diaugmentasi")
+        # waveform_data.extend(augmented_waveform_data)
+        return augmented_waveform_data
+        
 
 # def feature_extraction(audio_signal):
 #     y, sr = librosa.load(audio_signal)
