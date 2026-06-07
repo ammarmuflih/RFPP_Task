@@ -1,0 +1,28 @@
+\chapter{Metodologi}
+
+\section{Deskripsi Umum Penelitian}
+Penelitian ini bertujuan untuk mengembangkan sebuah prototipe asisten suara pintar yang mengintegrasikan pengenalan biometrik suara (\textit{Voice Biometrics}) dengan sistem eksekusi perintah berbasis aturan (\textit{Rule-Based}). Prototipe yang dikembangkan ini diberi nama S.A.W.I.T (\textit{Sound Assistant With Intelligent}). Metodologi penelitian dirancang ke dalam beberapa tahapan komprehensif mulai dari perancangan arsitektur umum, akuisisi data dari pengguna, ekstraksi fitur dan pemodelan, hingga tahapan evaluasi dan pengujian sistem. Secara garis besar, alur kerja sistem dimulai dengan proses memverifikasi identitas pembicara untuk menjamin keamanan akses, yang selanjutnya akan diikuti oleh proses pengenalan perintah dan eksekusinya jika pengguna terverifikasi sebagai individu yang sah.
+
+\section{Akuisisi Data}
+Tahapan awal dari metodologi ini difokuskan pada pengumpulan data suara primer. Akuisisi data dilakukan melalui proses perekaman suara secara langsung untuk mendapatkan \textit{dataset} yang sesuai dengan kondisi operasional prototipe. Data yang diakuisisi dikategorikan ke dalam dua bagian utama, yaitu:
+\begin{enumerate}
+    \item \textbf{Data Rekaman Suara (\textit{Voice ID}):} Kumpulan rekaman suara pengguna sah yang akan dijadikan profil referensi dasar (\textit{baseline}) oleh model dari modul \textit{Voice Biometrics}. Rekaman ini ditujukan agar sistem dapat mempelajari karakteristik unik profil vokal dari pengguna di sistem asisten tersebut.
+    \item \textbf{Data Suara Perintah (\textit{Command}):} Kumpulan rekaman dari berbagai representasi kata perintah spesifik. Suara perintah ini dikumpulkan guna melatih modul pengenalan ucapan agar mampu menangkap dan memetakan instruksi lisan ke dalam sebuah \textit{trigger} eksekusi pada modul keputusan \textit{Rule-Based}.
+\end{enumerate}
+
+\section{Rancangan Metode, Model, dan Algoritma}
+Pada tahapan perancangan ini, penulis merencanakan penggunaan dan penggabungan teknik pengenalan pola tingkat lanjut yang mengeksploitasi data karakteristik akustik buatan (\textit{handcrafted features}). 
+
+Metode utama yang diusulkan adalah ekstraksi fitur suara menggunakan prinsip parameterisasi \textit{Mel-Frequency Cepstral Coefficients} (MFCC) yang diintegrasikan dengan model klasifikasi \textit{Multilayer Perceptron} (MLP). Rincian mengenai tahapan pemodelan adalah sebagai berikut:
+\begin{itemize}
+    \item \textbf{Ekstraksi Fitur (MFCC):} Sinyal suara (speech signal) dari tahap akuisisi data akan dikonversi menjadi representasi yang lebih padat menggunakan prinsip spektral. Algoritma MFCC mengekstrak informasi amplop spektral ke dalam skala Mel yang merepresentasikan sensitivitas telinga manusia. Hal ini membantu mengurangi dimensi data masukan tanpa menghilangkan karakteristik fonem maupun frekuensi nada dasar (pitch) yang unik di setiap pelafalan manusia.
+    \item \textbf{Model Klasifikasi (MLP):} Sekumpulan matriks atau fitur koefisien yang diekstraksi dari algoritma MFCC akan digunakan sebagai masukan \textit{input layer} pada kelas Jaringan Saraf Tiruan \textit{Multilayer Perceptron} (MLP). Algoritma propagasi balik (\textit{Backpropagation}) akan digunakan guna melatih bobot model MLP tersebut, sehingga model mampu mempelajari secara linier dan nonlinier batasan antar fitur \textit{Voice ID} dari pengguna terverifikasi maupun fitur perintah masuk agar diterjemahkan langsung sebagai instrumen instruksi.
+\end{itemize}
+
+\section{Rencana Pengujian}
+Prototipe S.A.W.I.T yang telah dikembangkan akan dievaluasi dan diuji secara skematis untuk memastikan setiap fungsi bekerja sesuai dengan standar kinerja dan fungsionalitas purwarupa yang relevan. Pada tahap pengujian akhir, performa sistem dievaluasi pada data pengujian yang terpisah dari proporsi data latih. Rencana pengujian meliputi pengujian modul sebagai berikut:
+\begin{enumerate}
+    \item \textbf{Pengujian Pengenalan \textit{Voice ID}:} Skenario evaluasi ini menguji ketangguhan model biometrik yang dilatih dalam mengukur dan memverifikasi skor kemiripan antara rekaman yang baru di-input oleh pengguna dengan referensi sidik suara (\textit{voice print}) awal. Pengujian juga ditujukan demi melihat seberapa solid model dalam menangkal masuknya suara di luar profil terdaftar.
+    \item \textbf{Pengujian Pengenalan \textit{Command}:} Mengukur akurasi dan kepastian model dalam memisahkan dan menangkap varian diksi instruksi, di mana pada sistem ini digunakan untuk menilai apakah eksekusi otomatis yang dirancang lewat algoritma penalaran \textit{Rule-Based} berjalan mulus sebagaimana klasifikasi perintah yang diputuskan oleh MLP.
+\end{enumerate}
+Secara operasional, efektivitas seluruh tingkat prediksi model ini akan diukur sepenuhnya menggunakan \textit{set} data rekaman suara khusus untuk uji coba guna mengurangi bias atau fenomena yang diistilahkan dengan \textit{data leakage}.

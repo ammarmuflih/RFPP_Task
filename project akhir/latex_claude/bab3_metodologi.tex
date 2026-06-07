@@ -1,0 +1,128 @@
+\chapter{METODOLOGI PENELITIAN}
+
+\section{Deskripsi Umum Penelitian}
+
+Penelitian ini bertujuan untuk membangun sebuah prototipe sistem \textit{Sound Assistant} berbasis kecerdasan buatan yang diberi nama \textbf{S.A.W.I.T} (\textit{Sound Assistant With Intelligent Technology}). Sistem ini mengintegrasikan dua komponen utama, yaitu \textit{voice biometrics} untuk pengenalan identitas pengguna berdasarkan suara, serta eksekusi perintah berbasis aturan (\textit{rule-based}) untuk merespons perintah suara yang diberikan oleh pengguna yang telah terverifikasi.
+
+Secara umum, sistem S.A.W.I.T dirancang untuk dapat:
+\begin{enumerate}
+    \item Mengenali identitas pengguna melalui karakteristik unik suara masing-masing individu (\textit{speaker verification/identification}).
+    \item Mengenali perintah suara tertentu yang diberikan oleh pengguna.
+    \item Mengeksekusi aksi atau respons yang sesuai berdasarkan perintah yang dikenali menggunakan mekanisme berbasis aturan.
+\end{enumerate}
+
+Penelitian ini menggunakan pendekatan \textit{handcrafted feature extraction} dengan algoritma \textit{Mel-Frequency Cepstral Coefficients} (MFCC) sebagai teknik ekstrasi fitur utama, dikombinasikan dengan model \textit{Multi-Layer Perceptron} (MLP) sebagai penggolongan (\textit{classifier}). Pendekatan ini dipilih karena MFCC telah terbukti efektif dalam merepresentasikan karakteristik akustik suara manusia, sementara MLP mampu memodelkan hubungan nonlinear yang kompleks antar fitur suara.
+
+Alur umum sistem S.A.W.I.T dapat dibagi menjadi tiga tahap utama: (1) akuisisi dan pra-pemrosesan data suara, (2) ekstraksi fitur dan pelatihan model, serta (3) inferensi dan eksekusi perintah. Keseluruhan alur ini dirancang agar sistem dapat berjalan secara real-time pada perangkat keras yang tersedia.
+
+%------------------------------------------------------------
+\section{Akuisisi Data}
+
+Tahap akuisisi data merupakan tahap pengumpulan data suara yang akan digunakan sebagai bahan pelatihan dan pengujian sistem. Data yang dikumpulkan terdiri dari dua jenis, yaitu data suara identitas pengguna (\textit{speaker data}) dan data suara perintah (\textit{command data}).
+
+\subsection*{Data Suara Identitas Pengguna}
+
+Data suara identitas pengguna direkam dari beberapa orang yang akan didaftarkan ke dalam sistem. Setiap pengguna diminta untuk merekam suaranya dalam beberapa sesi dan kondisi yang berbeda guna mendapatkan variasi data yang cukup. Rekaman dilakukan dengan ketentuan sebagai berikut:
+\begin{itemize}
+    \item Setiap pengguna merekam sejumlah sampel suara berupa kalimat atau kata-kata tertentu yang telah ditentukan.
+    \item Rekaman dilakukan dalam lingkungan dengan tingkat kebisingan yang terkontrol.
+    \item Format audio yang digunakan adalah WAV dengan frekuensi sampel (\textit{sample rate}) 16.000 Hz dan kedalaman bit (\textit{bit depth}) 16-bit mono.
+    \item Data rekaman diberi label sesuai dengan identitas masing-masing pengguna untuk keperluan supervised learning.
+\end{itemize}
+
+\subsection*{Data Suara Perintah}
+
+Data suara perintah merupakan kumpulan rekaman yang berisi kata atau frasa perintah tertentu yang akan dikenali oleh sistem. Perintah-perintah ini mencakup berbagai instruksi yang akan dipetakan ke dalam aksi sistem melalui mekanisme berbasis aturan. Ketentuan pengumpulan data perintah adalah sebagai berikut:
+\begin{itemize}
+    \item Kamus perintah (\textit{command vocabulary}) ditentukan terlebih dahulu sebelum proses rekaman dimulai.
+    \item Setiap kata perintah direkam oleh beberapa penutur berbeda untuk meningkatkan generalisasi model.
+    \item Setiap penutur merekam setiap perintah sebanyak beberapa kali ulangan untuk menambah jumlah sampel data.
+    \item Data diberi label sesuai dengan kelas perintah masing-masing.
+\end{itemize}
+
+\subsection*{Pra-Pemrosesan Data}
+
+Sebelum digunakan untuk pelatihan model, seluruh data audio melalui tahap pra-pemrosesan yang meliputi:
+\begin{itemize}
+    \item \textbf{Normalisasi amplitudo}: Menyeragamkan tingkat kenyaringan sinyal suara.
+    \item \textbf{Penghapusan keheningan (\textit{silence removal})}: Memotong bagian-bagian rekaman yang tidak mengandung sinyal suara.
+    \item \textbf{Pemotongan segmen (\textit{framing})}: Membagi sinyal menjadi segmen-segmen pendek yang tumpang tindih untuk keperluan ekstraksi fitur.
+\end{itemize}
+
+%------------------------------------------------------------
+\section{Rancangan Metode, Model, dan Algoritma}
+
+Penelitian ini menggunakan pendekatan \textit{handcrafted feature engineering} yang menggabungkan teknik ekstraksi fitur MFCC dengan model klasifikasi MLP. Desain sistem dibagi menjadi dua subsistem utama: subsistem \textit{voice biometrics} (pengenalan identitas pengguna) dan subsistem pengenalan perintah suara (\textit{command recognition}).
+
+\subsection*{Ekstraksi Fitur: Mel-Frequency Cepstral Coefficients (MFCC)}
+
+MFCC adalah teknik representasi fitur akustik yang banyak digunakan dalam pemrosesan sinyal suara. MFCC didasarkan pada persepsi pendengaran manusia yang menggunakan skala Mel untuk merepresentasikan frekuensi. Tahapan perhitungan MFCC adalah sebagai berikut:
+
+\begin{enumerate}
+    \item \textbf{Pembingkaian sinyal (\textit{framing})}: Sinyal audio dibagi menjadi bingkai-bingkai pendek sepanjang 20--40 ms dengan tumpang tindih antar bingkai.
+    \item \textbf{Windowing}: Setiap bingkai dikalikan dengan fungsi jendela (umumnya Hamming window) untuk mereduksi efek diskontinuitas di tepi bingkai.
+    \item \textbf{Fast Fourier Transform (FFT)}: Mengubah sinyal dari domain waktu ke domain frekuensi.
+    \item \textbf{Filter bank Mel}: Menerapkan sekumpulan filter segitiga yang tersebar secara linear pada skala Mel untuk meniru persepsi pendengaran manusia.
+    \item \textbf{Logaritma energi}: Menghitung logaritma dari keluaran setiap filter untuk mensimulasikan respons logaritmik telinga manusia.
+    \item \textbf{Discrete Cosine Transform (DCT)}: Mengubah keluaran log-energi menjadi koefisien cepstral dalam domain Mel (MFCC).
+\end{enumerate}
+
+Pada penelitian ini, fitur MFCC diekstraksi dengan jumlah koefisien sebanyak 13 atau lebih (dapat ditambah dengan delta dan delta-delta MFCC) untuk mendapatkan representasi dinamika temporal suara yang lebih kaya.
+
+\subsection*{Model Klasifikasi: Multi-Layer Perceptron (MLP)}
+
+MLP adalah jenis jaringan saraf tiruan (\textit{artificial neural network}) yang terdiri dari satu lapisan masukan (\textit{input layer}), satu atau lebih lapisan tersembunyi (\textit{hidden layer}), dan satu lapisan keluaran (\textit{output layer}). Model MLP dipilih karena kemampuannya dalam memodelkan hubungan nonlinear yang kompleks antar fitur.
+
+Arsitektur MLP yang digunakan pada penelitian ini dirancang sebagai berikut:
+\begin{itemize}
+    \item \textbf{Lapisan masukan}: Menerima vektor fitur MFCC hasil ekstraksi (dimensi sesuai jumlah koefisien MFCC yang digunakan).
+    \item \textbf{Lapisan tersembunyi}: Terdiri dari beberapa lapisan dengan fungsi aktivasi ReLU (\textit{Rectified Linear Unit}).
+    \item \textbf{Lapisan keluaran}: Menggunakan fungsi aktivasi Softmax untuk menghasilkan probabilitas kelas (identitas pengguna atau kelas perintah).
+    \item \textbf{Fungsi kerugian (\textit{loss function})}: \textit{Categorical Cross-Entropy}.
+    \item \textbf{Optimizer}: Adam optimizer dengan \textit{learning rate} yang dapat disesuaikan.
+\end{itemize}
+
+\subsection*{Mekanisme Eksekusi Perintah Berbasis Aturan (\textit{Rule-Based})}
+
+Setelah perintah suara berhasil dikenali oleh model MLP, sistem akan memetakan label perintah yang dihasilkan ke dalam tindakan (\textit{action}) yang sesuai melalui mekanisme berbasis aturan. Aturan-aturan ini didefinisikan secara eksplisit dalam bentuk tabel pemetaan perintah-aksi (\textit{command-action mapping table}). Mekanisme ini memastikan bahwa sistem hanya dapat mengeksekusi perintah yang telah terdaftar dan terverifikasi, sehingga menjamin keamanan dan prediktabilitas sistem.
+
+%------------------------------------------------------------
+\section{Rencana Pengujian}
+
+Pengujian sistem S.A.W.I.T dilakukan dalam dua tahap utama, yaitu pengujian pengenalan identitas pengguna (\textit{voice biometrics}) dan pengujian pengenalan perintah suara (\textit{command recognition}). Seluruh pengujian menggunakan data rekaman suara yang telah dikumpulkan pada tahap akuisisi data.
+
+\subsection*{4.1 Pengujian Pengenalan Identitas Pengguna (\textit{Voice Biometrics})}
+
+Pengujian ini bertujuan untuk mengukur kemampuan sistem dalam mengidentifikasi dan memverifikasi identitas pengguna berdasarkan karakteristik suara mereka. Skenario pengujian meliputi:
+
+\begin{itemize}
+    \item \textbf{Skenario pengenalan identitas (\textit{speaker identification})}: Sistem diberikan sampel suara dan diminta untuk menentukan identitas pengguna dari sekumpulan pengguna yang terdaftar.
+    \item \textbf{Skenario verifikasi identitas (\textit{speaker verification})}: Sistem diminta untuk memverifikasi apakah klaim identitas seorang pengguna sesuai dengan karakteristik suaranya.
+\end{itemize}
+
+Metrik evaluasi yang digunakan pada pengujian ini antara lain:
+\begin{itemize}
+    \item \textbf{Akurasi (\textit{Accuracy})}: Persentase sampel yang berhasil diklasifikasikan dengan benar.
+    \item \textbf{\textit{Equal Error Rate} (EER)}: Titik di mana \textit{False Acceptance Rate} (FAR) dan \textit{False Rejection Rate} (FRR) bernilai sama, digunakan khususnya pada skenario verifikasi.
+    \item \textbf{\textit{Confusion Matrix}}: Matriks yang memperlihatkan distribusi prediksi benar dan salah untuk setiap kelas pengguna.
+\end{itemize}
+
+\subsection*{4.2 Pengujian Pengenalan Perintah Suara (\textit{Command Recognition})}
+
+Pengujian ini bertujuan untuk mengukur kemampuan sistem dalam mengenali kata atau frasa perintah yang diucapkan oleh pengguna. Skenario pengujian meliputi:
+
+\begin{itemize}
+    \item \textbf{Pengujian perintah yang dikenal (\textit{in-vocabulary test})}: Sistem diuji dengan perintah-perintah yang termasuk dalam kamus perintah yang telah dilatih.
+    \item \textbf{Pengujian ketahanan terhadap gangguan (\textit{noise robustness test})}: Sistem diuji dengan sampel suara yang mengandung gangguan latar belakang untuk mengevaluasi ketahanan model dalam kondisi nyata.
+\end{itemize}
+
+Metrik evaluasi yang digunakan pada pengujian ini antara lain:
+\begin{itemize}
+    \item \textbf{Akurasi}: Persentase perintah yang berhasil dikenali dengan benar.
+    \item \textbf{\textit{Precision}, \textit{Recall}, dan \textit{F1-Score}}: Untuk mengukur performa per kelas perintah secara lebih detail.
+    \item \textbf{\textit{Confusion Matrix}}: Matriks distribusi prediksi untuk setiap kelas perintah.
+\end{itemize}
+
+\subsection*{Pembagian Data Pengujian}
+
+Seluruh data rekaman suara yang telah dikumpulkan akan dibagi menjadi data latih (\textit{training set}) dan data uji (\textit{testing set}) dengan rasio yang ditentukan, misalnya 80:20 atau 70:30. Pembagian data dilakukan secara acak namun terstratifikasi (\textit{stratified split}) agar distribusi kelas pada data latih dan data uji tetap proporsional. Data uji tidak digunakan pada saat pelatihan model untuk menghindari \textit{data leakage} dan memastikan hasil evaluasi yang objektif.
