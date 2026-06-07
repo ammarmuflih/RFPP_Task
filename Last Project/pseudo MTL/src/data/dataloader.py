@@ -53,12 +53,28 @@ class dataUtils:
 
         return result
 
+    # def data_split(self, df):
+    #     # Official Split: sample 0-4 (test), 5-49 (train)
+    #     test_data = df[df['sample_number'].isin(range(0, 5))].reset_index(drop=True)
+    #     train_data = df[df['sample_number'].isin(range(15, 50))].reset_index(drop=True)
+    #     val_data = df[df['sample_number'].isin(range(5, 15))].reset_index(drop=True)
+        
+    #     return train_data, test_data, val_data
+
     def data_split(self, df):
         # Official Split: sample 0-4 (test), 5-49 (train)
-        test_data = df[df['sample_number'].isin(range(0, 5))].reset_index(drop=True)
-        train_data = df[df['sample_number'].isin(range(15, 50))].reset_index(drop=True)
-        val_data = df[df['sample_number'].isin(range(5, 15))].reset_index(drop=True)
+        test_data = df[
+            (df['sample_number'].isin(range(0, 5))) & 
+            (df['augmented'] == 0)
+        ].reset_index(drop=True)
         
+        train_data = df[df['sample_number'].isin(range(15, 50))].reset_index(drop=True)
+        
+        val_data = df[
+            (df['sample_number'].isin(range(5, 15))) & 
+            (df['augmented'] == 0)
+        ].reset_index(drop=True)
+
         return train_data, test_data, val_data
     
     def load_data_waveform(self, audio_dir):

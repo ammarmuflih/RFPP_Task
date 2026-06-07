@@ -4,7 +4,7 @@ class Config:
     # Path
     DATASET_PATH = "./datasets/FSDD"
     SAVE_DIR = "./results/models"
-    AUDIO_PATH = "C:\\Users\\Ammar\\OneDrive\\Dokumen\\NextCloud\\My Documents\\Kuylah S2\\SEM 2\\RFPP\\RFPP_Task\\Last Project\\pseudo MTL\\data\\recordings\\"
+    AUDIO_PATH = "C:\\Users\\Muhammad Ammar M\\Nextcloud\\My Documents\\Kuylah S2\\SEM 2\\RFPP\\RFPP_Task\\Last Project\\pseudo MTL\\data\\recordings\\"
     SPECTOGRAM_PATH = "C:\\Users\\Ammar\\OneDrive\\Dokumen\\NextCloud\\My Documents\\Kuylah S2\\SEM 2\\RFPP\\RFPP_Task\\Last Project\\pseudo MTL\\data\\spectrograms\\"
     
     # Audio Feature Extraction

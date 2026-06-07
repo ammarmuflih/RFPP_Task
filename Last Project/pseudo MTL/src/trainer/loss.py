@@ -11,8 +11,8 @@ class MultiTaskLoss(nn.Module):
         self.w2 = weight_task2
 
     def forward(self, pred1, target1, pred2, target2):
-        loss1 = self.criterion1(pred1, target1)
-        loss2 = self.criterion2(pred2 ,target2)
+        loss1 = self.criterion1(pred1, target1.long())
+        loss2 = self.criterion2(pred2 ,target2.long())
         
         # Menggabungkan dengan bobot kustom
         total_loss = (self.w1 * loss1) + (self.w2 * loss2)

@@ -18,20 +18,6 @@ def feature_extraction(extracted_wav):
         rms = librosa.feature.rms(y=y)
         zcr = librosa.feature.zero_crossing_rate(y=y)
 
-        # mfcc_features.append(np.hstack([
-        #     np.mean(y), np.std(y), np.max(y), np.min(y),
-        #     np.mean(zcr), np.mean(rms),
-        #     np.mean(spctrl_ctrd), np.std(spctrl_ctrd),
-        #     np.mean(spctrl_bdwth), np.std(spctrl_bdwth),
-        #     np.mean(spctrl_rolloff), np.std(spctrl_rolloff),
-        #     np.mean(mfcc_feat, axis=1),       
-        #     np.std(mfcc_feat, axis=1),        
-        #     # np.mean(delta, axis=1),           
-        #     # np.std(delta, axis=1),            
-        #     # np.mean(delta2, axis=1),          
-        #     # np.std(delta2, axis=1),           
-        #     item["speaker"], item["digit"], item["sample_number"],
-        # ]))
         del item["y"], item["sr"], item['data_path']
         item["mfcc_feature"] = np.hstack([
             np.mean(y), np.std(y), np.max(y), np.min(y),
@@ -40,11 +26,7 @@ def feature_extraction(extracted_wav):
             np.mean(spctrl_bdwth), np.std(spctrl_bdwth),
             np.mean(spctrl_rolloff), np.std(spctrl_rolloff),
             np.mean(mfcc_feat, axis=1),       
-            np.std(mfcc_feat, axis=1),        
-            # np.mean(delta, axis=1),           
-            # np.std(delta, axis=1),            
-            # np.mean(delta2, axis=1),          
-            # np.std(delta2, axis=1),           
+            np.std(mfcc_feat, axis=1),                   
         ])
         
     return extracted_wav
